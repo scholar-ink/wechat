@@ -32,15 +32,16 @@ type SessionInfo struct {
 	UnionId   string `json:"unionId"` // 只有在用户将公众号绑定到微信开放平台帐号后，才会出现该字段。
 }
 
-func GetSession(Endpoint *Endpoint, code string) (session *Session, err error) {
+func GetSession(Endpoint *Endpoint, code string) (session Session, err error) {
 
-	if err = getSession(session, Endpoint.SessionCodeUrl(code)); err != nil {
-		return
-	}
+	session, err = getSession(Endpoint.SessionCodeUrl(code))
+
+	fmt.Println(session)
+
 	return
 }
 
-func getSession(session *Session, url string) (err error) {
+func getSession(url string) (session Session, err error) {
 
 	httpClient := util.DefaultHttpClient
 
@@ -52,26 +53,26 @@ func getSession(session *Session, url string) (err error) {
 	}
 	defer httpResp.Body.Close()
 
-	if httpResp.StatusCode != http.StatusOK {
-		return fmt.Errorf("http.Status: %s", httpResp.Status)
-	}
-
 	var result struct {
 		oauth2.Error
 		Session
+	}
+
+	if httpResp.StatusCode != http.StatusOK {
+		return result.Session, fmt.Errorf("http.Status: %s", httpResp.Status)
 	}
 
 	if err = api.DecodeJSONHttpResponse(httpResp.Body, &result); err != nil {
 		return
 	}
 
+	fmt.Println(result.Session)
+
 	if result.ErrCode != oauth2.ErrCodeOK {
-		return &result.Error
+		return result.Session, &result.Error
 	}
 
-	session = &result.Session
-
-	return
+	return result.Session, nil
 }
 
 func GetSessionInfo(EncryptedData, sessionKey, iv string) (info *SessionInfo, err error) {
